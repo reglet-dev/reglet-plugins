@@ -1,5 +1,3 @@
-//go:build wasip1
-
 package main
 
 import (
@@ -13,14 +11,19 @@ import (
 	"time"
 
 	regletsdk "github.com/reglet-dev/reglet-sdk/go"
-	regletnet "github.com/reglet-dev/reglet-sdk/go/net"
 )
+
+// HTTPDoFunc is the function signature for executing HTTP requests.
+// This allows dependency injection for testing.
+type HTTPDoFunc func(req *http.Request) (*http.Response, error)
 
 // httpPlugin implements the sdk.Plugin interface.
 type httpPlugin struct {
 	// client is an optional HTTP client for testing purposes.
-	// If nil, the SDK's default WASM transport is used.
+	// If nil, the doFunc is used.
 	client *http.Client
+	// doFunc is the function to use for HTTP requests (set by WASM main.go)
+	doFunc HTTPDoFunc
 }
 
 // Describe returns HTTP plugin metadata.
@@ -107,8 +110,11 @@ func (p *httpPlugin) executeRequest(ctx context.Context, cfg *HTTPConfig) (*http
 	var resp *http.Response
 	if p.client != nil {
 		resp, err = p.client.Do(req)
+	} else if p.doFunc != nil {
+		resp, err = p.doFunc(req)
 	} else {
-		resp, err = regletnet.Do(req)
+		// Fall back to default HTTP client for native testing
+		resp, err = http.DefaultClient.Do(req)
 	}
 	duration := time.Since(start).Milliseconds()
 

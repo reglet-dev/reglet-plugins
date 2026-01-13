@@ -1,5 +1,3 @@
-//go:build wasip1
-
 package main
 
 import (
@@ -8,13 +6,29 @@ import (
 	"time"
 
 	regletsdk "github.com/reglet-dev/reglet-sdk/go"
-	regletnet "github.com/reglet-dev/reglet-sdk/go/net"
 )
+
+// TCPConnectResult represents the result of a TCP connection attempt.
+// This is a local type that mirrors the SDK type for testability.
+type TCPConnectResult struct {
+	Connected       bool
+	Address         string
+	ResponseTimeMs  int64
+	RemoteAddr      string
+	LocalAddr       string
+	TLS             bool
+	TLSVersion      string
+	TLSCipherSuite  string
+	TLSServerName   string
+	TLSCertSubject  string
+	TLSCertIssuer   string
+	TLSCertNotAfter *time.Time
+}
 
 // tcpPlugin implements the sdk.Plugin interface.
 type tcpPlugin struct {
 	// DialTCP allows dependency injection for testing
-	DialTCP func(ctx context.Context, host, port string, timeoutMs int, useTLS bool) (*regletnet.TCPConnectResult, error)
+	DialTCP func(ctx context.Context, host, port string, timeoutMs int, useTLS bool) (*TCPConnectResult, error)
 }
 
 // Describe returns plugin metadata.
@@ -64,7 +78,7 @@ func (p *tcpPlugin) Check(ctx context.Context, config regletsdk.Config) (reglets
 		}, nil
 	}
 
-	address := fmt.Sprintf("%s:%s", cfg.Host, cfg.Port) // Add this line
+	address := fmt.Sprintf("%s:%s", cfg.Host, cfg.Port)
 
 	if p.DialTCP == nil {
 		return regletsdk.Failure("internal", "DialTCP not initialized"), nil

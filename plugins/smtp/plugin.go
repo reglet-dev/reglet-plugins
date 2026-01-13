@@ -1,5 +1,3 @@
-//go:build wasip1
-
 package main
 
 import (
@@ -7,13 +5,25 @@ import (
 	"fmt"
 
 	regletsdk "github.com/reglet-dev/reglet-sdk/go"
-	regletnet "github.com/reglet-dev/reglet-sdk/go/net"
 )
+
+// SMTPConnectResult represents the result of an SMTP connection attempt.
+// This is a local type that mirrors the SDK type for testability.
+type SMTPConnectResult struct {
+	Connected      bool
+	Address        string
+	ResponseTimeMs int64
+	Banner         string
+	TLS            bool
+	TLSVersion     string
+	TLSCipherSuite string
+	TLSServerName  string
+}
 
 // smtpPlugin implements the sdk.Plugin interface.
 type smtpPlugin struct {
 	// DialSMTP allows dependency injection for testing
-	DialSMTP func(ctx context.Context, host, port string, timeoutMs int, useTLS bool, useStartTLS bool) (*regletnet.SMTPConnectResult, error)
+	DialSMTP func(ctx context.Context, host, port string, timeoutMs int, useTLS bool, useStartTLS bool) (*SMTPConnectResult, error)
 }
 
 // Describe returns plugin metadata.
@@ -99,11 +109,4 @@ func (p *smtpPlugin) Check(ctx context.Context, config regletsdk.Config) (reglet
 	}
 
 	return regletsdk.Success(data), nil
-}
-
-func main() {
-	plugin := &smtpPlugin{
-		DialSMTP: regletnet.DialSMTP,
-	}
-	regletsdk.Register(plugin)
 }

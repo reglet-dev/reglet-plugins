@@ -1,9 +1,10 @@
-//go:build wasip1
+//go:build !wasip1
 
 package main
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	regletsdk "github.com/reglet-dev/reglet-sdk/go"
@@ -12,14 +13,20 @@ import (
 )
 
 func TestDNSPlugin_Check_ConfigValidation(t *testing.T) {
-	plugin := &dnsPlugin{}
-	ctx := context.Background()
+	// Create a mock lookup that doesn't actually make network calls
+	mockLookup := func(ctx context.Context, hostname, recordType, nameserver string) (*DNSLookupResult, error) {
+		return &DNSLookupResult{
+			Records: []string{"93.184.216.34"},
+		}, nil
+	}
+
+	plugin := &dnsPlugin{LookupFunc: mockLookup}
 
 	tests := []struct {
 		name      string
 		config    regletsdk.Config
 		wantError bool
-		errMsg    string // Expected part of error message for invalid configs
+		errMsg    string
 	}{
 		{
 			name: "Valid A record config",
@@ -73,8 +80,8 @@ func TestDNSPlugin_Check_ConfigValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			evidence, err := plugin.Check(ctx, tt.config)
-			require.NoError(t, err, "Check should not return a Go error directly, but evidence with status/error info")
+			evidence, err := plugin.Check(context.Background(), tt.config)
+			require.NoError(t, err, "Check should not return a Go error directly")
 
 			if tt.wantError {
 				assert.False(t, evidence.Status, "Expected status to be false for config error")
@@ -82,12 +89,92 @@ func TestDNSPlugin_Check_ConfigValidation(t *testing.T) {
 				assert.Contains(t, evidence.Error.Message, tt.errMsg)
 				assert.Equal(t, "config", evidence.Error.Type)
 			} else {
-				// For valid configs, we expect status true from the config validation part.
-				// Actual network lookup success/failure is handled by the SDK and reflected
-				// in the evidence data, but for these unit tests, we're only testing that
-				// config validation passes and doesn't immediately yield a config error.
-				assert.True(t, evidence.Status || evidence.Error != nil, "Expected status to be true or an error from network lookup")
+				assert.True(t, evidence.Status, "Expected status to be true")
 			}
 		})
 	}
+}
+
+func TestDNSPlugin_Check_Success(t *testing.T) {
+	mockLookup := func(ctx context.Context, hostname, recordType, nameserver string) (*DNSLookupResult, error) {
+		return &DNSLookupResult{
+			Records: []string{"93.184.216.34", "93.184.216.35"},
+		}, nil
+	}
+
+	plugin := &dnsPlugin{LookupFunc: mockLookup}
+	config := regletsdk.Config{
+		"hostname":    "example.com",
+		"record_type": "A",
+	}
+
+	evidence, err := plugin.Check(context.Background(), config)
+	require.NoError(t, err)
+
+	assert.True(t, evidence.Status)
+	assert.Equal(t, 2, evidence.Data["record_count"])
+	assert.Equal(t, false, evidence.Data["is_timeout"])
+	assert.Equal(t, false, evidence.Data["is_not_found"])
+}
+
+func TestDNSPlugin_Check_MXRecords(t *testing.T) {
+	mockLookup := func(ctx context.Context, hostname, recordType, nameserver string) (*DNSLookupResult, error) {
+		return &DNSLookupResult{
+			MXRecords: []MXRecord{
+				{Host: "mail1.example.com", Pref: 10},
+				{Host: "mail2.example.com", Pref: 20},
+			},
+		}, nil
+	}
+
+	plugin := &dnsPlugin{LookupFunc: mockLookup}
+	config := regletsdk.Config{
+		"hostname":    "example.com",
+		"record_type": "MX",
+	}
+
+	evidence, err := plugin.Check(context.Background(), config)
+	require.NoError(t, err)
+
+	assert.True(t, evidence.Status)
+	assert.Equal(t, 2, evidence.Data["record_count"])
+}
+
+func TestDNSPlugin_Check_NotFound(t *testing.T) {
+	mockLookup := func(ctx context.Context, hostname, recordType, nameserver string) (*DNSLookupResult, error) {
+		return &DNSLookupResult{
+			Error: &DNSError{
+				Message:    "no such host",
+				Type:       "network",
+				IsNotFound: true,
+			},
+		}, nil
+	}
+
+	plugin := &dnsPlugin{LookupFunc: mockLookup}
+	config := regletsdk.Config{
+		"hostname": "nonexistent.example.com",
+	}
+
+	evidence, err := plugin.Check(context.Background(), config)
+	require.NoError(t, err)
+
+	assert.False(t, evidence.Status)
+	assert.Equal(t, true, evidence.Data["is_not_found"])
+}
+
+func TestDNSPlugin_Check_LookupError(t *testing.T) {
+	mockLookup := func(ctx context.Context, hostname, recordType, nameserver string) (*DNSLookupResult, error) {
+		return nil, errors.New("network unreachable")
+	}
+
+	plugin := &dnsPlugin{LookupFunc: mockLookup}
+	config := regletsdk.Config{
+		"hostname": "example.com",
+	}
+
+	evidence, err := plugin.Check(context.Background(), config)
+	require.NoError(t, err)
+
+	assert.False(t, evidence.Status)
 }

@@ -1,4 +1,4 @@
-module github.com/reglet-dev/reglet/plugins/smtp
+module github.com/reglet-dev/reglet-plugins/plugins/smtp
 
 go 1.25.5
 

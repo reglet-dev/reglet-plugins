@@ -1,4 +1,4 @@
-module github.com/reglet-dev/reglet/plugins/tcp
+module github.com/reglet-dev/reglet-plugins/plugins/tcp
 
 go 1.25.5
 

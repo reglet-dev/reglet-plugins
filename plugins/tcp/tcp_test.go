@@ -1,4 +1,4 @@
-//go:build wasip1
+//go:build !wasip1
 
 package main
 
@@ -8,12 +8,11 @@ import (
 	"testing"
 
 	regletsdk "github.com/reglet-dev/reglet-sdk/go"
-	regletnet "github.com/reglet-dev/reglet-sdk/go/net"
 )
 
 func TestTCPPlugin_Check_Success(t *testing.T) {
-	mockDialer := func(ctx context.Context, host, port string, timeoutMs int, useTLS bool) (*regletnet.TCPConnectResult, error) {
-		return &regletnet.TCPConnectResult{
+	mockDialer := func(ctx context.Context, host, port string, timeoutMs int, useTLS bool) (*TCPConnectResult, error) {
+		return &TCPConnectResult{
 			Connected:      true,
 			Address:        host + ":" + port,
 			ResponseTimeMs: 10,
@@ -38,7 +37,7 @@ func TestTCPPlugin_Check_Success(t *testing.T) {
 }
 
 func TestTCPPlugin_Check_ConnectionRefused(t *testing.T) {
-	mockDialer := func(ctx context.Context, host, port string, timeoutMs int, useTLS bool) (*regletnet.TCPConnectResult, error) {
+	mockDialer := func(ctx context.Context, host, port string, timeoutMs int, useTLS bool) (*TCPConnectResult, error) {
 		return nil, errors.New("connection refused")
 	}
 
@@ -62,8 +61,8 @@ func TestTCPPlugin_Check_ConnectionRefused(t *testing.T) {
 }
 
 func TestTCPPlugin_Check_TLS_Version_Pass(t *testing.T) {
-	mockDialer := func(ctx context.Context, host, port string, timeoutMs int, useTLS bool) (*regletnet.TCPConnectResult, error) {
-		return &regletnet.TCPConnectResult{
+	mockDialer := func(ctx context.Context, host, port string, timeoutMs int, useTLS bool) (*TCPConnectResult, error) {
+		return &TCPConnectResult{
 			Connected:  true,
 			TLS:        true,
 			TLSVersion: "TLS 1.3",
@@ -89,8 +88,8 @@ func TestTCPPlugin_Check_TLS_Version_Pass(t *testing.T) {
 }
 
 func TestTCPPlugin_Check_TLS_Version_Fail(t *testing.T) {
-	mockDialer := func(ctx context.Context, host, port string, timeoutMs int, useTLS bool) (*regletnet.TCPConnectResult, error) {
-		return &regletnet.TCPConnectResult{
+	mockDialer := func(ctx context.Context, host, port string, timeoutMs int, useTLS bool) (*TCPConnectResult, error) {
+		return &TCPConnectResult{
 			Connected:  true,
 			TLS:        true,
 			TLSVersion: "TLS 1.0",

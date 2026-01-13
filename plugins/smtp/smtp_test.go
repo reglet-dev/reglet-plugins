@@ -1,4 +1,4 @@
-//go:build wasip1
+//go:build !wasip1
 
 package main
 
@@ -8,12 +8,11 @@ import (
 	"testing"
 
 	regletsdk "github.com/reglet-dev/reglet-sdk/go"
-	regletnet "github.com/reglet-dev/reglet-sdk/go/net"
 )
 
 func TestSMTPPlugin_Check_Success(t *testing.T) {
-	mockDialer := func(ctx context.Context, host, port string, timeoutMs int, useTLS bool, useStartTLS bool) (*regletnet.SMTPConnectResult, error) {
-		return &regletnet.SMTPConnectResult{
+	mockDialer := func(ctx context.Context, host, port string, timeoutMs int, useTLS bool, useStartTLS bool) (*SMTPConnectResult, error) {
+		return &SMTPConnectResult{
 			Connected:      true,
 			Address:        host + ":" + port,
 			ResponseTimeMs: 10,
@@ -42,7 +41,7 @@ func TestSMTPPlugin_Check_Success(t *testing.T) {
 }
 
 func TestSMTPPlugin_Check_ConnectionRefused(t *testing.T) {
-	mockDialer := func(ctx context.Context, host, port string, timeoutMs int, useTLS bool, useStartTLS bool) (*regletnet.SMTPConnectResult, error) {
+	mockDialer := func(ctx context.Context, host, port string, timeoutMs int, useTLS bool, useStartTLS bool) (*SMTPConnectResult, error) {
 		return nil, errors.New("connection refused")
 	}
 
@@ -66,8 +65,8 @@ func TestSMTPPlugin_Check_ConnectionRefused(t *testing.T) {
 }
 
 func TestSMTPPlugin_Check_WithTLS(t *testing.T) {
-	mockDialer := func(ctx context.Context, host, port string, timeoutMs int, useTLS bool, useStartTLS bool) (*regletnet.SMTPConnectResult, error) {
-		return &regletnet.SMTPConnectResult{
+	mockDialer := func(ctx context.Context, host, port string, timeoutMs int, useTLS bool, useStartTLS bool) (*SMTPConnectResult, error) {
+		return &SMTPConnectResult{
 			Connected:      true,
 			Address:        host + ":" + port,
 			ResponseTimeMs: 20,
@@ -105,11 +104,11 @@ func TestSMTPPlugin_Check_WithTLS(t *testing.T) {
 }
 
 func TestSMTPPlugin_Check_WithStartTLS(t *testing.T) {
-	mockDialer := func(ctx context.Context, host, port string, timeoutMs int, useTLS bool, useStartTLS bool) (*regletnet.SMTPConnectResult, error) {
+	mockDialer := func(ctx context.Context, host, port string, timeoutMs int, useTLS bool, useStartTLS bool) (*SMTPConnectResult, error) {
 		if !useStartTLS {
 			t.Errorf("Expected StartTLS to be true")
 		}
-		return &regletnet.SMTPConnectResult{
+		return &SMTPConnectResult{
 			Connected:      true,
 			Address:        host + ":" + port,
 			ResponseTimeMs: 15,
@@ -143,7 +142,7 @@ func TestSMTPPlugin_Check_WithStartTLS(t *testing.T) {
 
 func TestSMTPPlugin_Check_InvalidConfig(t *testing.T) {
 	plugin := &smtpPlugin{
-		DialSMTP: func(ctx context.Context, host, port string, timeoutMs int, useTLS bool, useStartTLS bool) (*regletnet.SMTPConnectResult, error) {
+		DialSMTP: func(ctx context.Context, host, port string, timeoutMs int, useTLS bool, useStartTLS bool) (*SMTPConnectResult, error) {
 			return nil, nil
 		},
 	}

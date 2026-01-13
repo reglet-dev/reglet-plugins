@@ -1,4 +1,4 @@
-module github.com/reglet-dev/reglet/plugins/dns
+module github.com/reglet-dev/reglet-plugins/plugins/dns
 
 go 1.25.5
 

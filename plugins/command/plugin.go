@@ -94,6 +94,7 @@ func (p *commandPlugin) Check(ctx context.Context, config regletsdk.Config) (reg
 		execMode = "direct"
 	}
 
+	start := time.Now()
 	resp, err := exec.Run(ctx, exec.CommandRequest{
 		Command: cmd,
 		Args:    args,
@@ -101,6 +102,7 @@ func (p *commandPlugin) Check(ctx context.Context, config regletsdk.Config) (reg
 		Env:     cfg.Env,
 		Timeout: cfg.Timeout,
 	})
+	duration := time.Since(start).Milliseconds()
 	if err != nil {
 		return regletsdk.Failure("exec", fmt.Sprintf("execution failed: %v", err)), nil
 	}
@@ -121,7 +123,7 @@ func (p *commandPlugin) Check(ctx context.Context, config regletsdk.Config) (reg
 
 		// Execution results
 		"exit_code":   resp.ExitCode,
-		"duration_ms": resp.Duration,
+		"duration_ms": duration,
 		"is_timeout":  resp.IsTimeout,
 
 		// Command metadata (for debugging and auditing)

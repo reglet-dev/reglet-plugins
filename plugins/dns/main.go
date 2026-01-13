@@ -1,4 +1,4 @@
-// Package main provides a dns plugin for Reglet.
+// Package main provides a DNS plugin for Reglet.
 // This is compiled to WASM and loaded by the Reglet runtime.
 //go:build wasip1
 
@@ -8,42 +8,48 @@ import (
 	"context"
 	"log/slog"
 
-	regletsdk "github.com/reglet-dev/reglet-sdk/go"     // Import the new SDK
-	regletnet "github.com/reglet-dev/reglet-sdk/go/net" // Import SDK net package
+	regletsdk "github.com/reglet-dev/reglet-sdk/go"
+	regletnet "github.com/reglet-dev/reglet-sdk/go/net"
 )
 
-// wasmResolver adapts the SDK's static functions to the dnsResolver interface.
-type wasmResolver struct{}
+// wrapLookup wraps the SDK's resolver to return local types
+func wrapLookup(ctx context.Context, hostname, recordType, nameserver string) (*DNSLookupResult, error) {
+	resolver := &regletnet.WasmResolver{Nameserver: nameserver}
+	wireResult, err := resolver.Lookup(ctx, hostname, recordType)
+	if err != nil {
+		return nil, err
+	}
 
-func (w *wasmResolver) LookupHost(ctx context.Context, host string, nameserver string) ([]string, error) {
-	r := &regletnet.WasmResolver{Nameserver: nameserver}
-	return r.LookupHost(ctx, host)
-}
+	result := &DNSLookupResult{}
 
-func (w *wasmResolver) LookupCNAME(ctx context.Context, host string, nameserver string) (string, error) {
-	r := &regletnet.WasmResolver{Nameserver: nameserver}
-	return r.LookupCNAME(ctx, host)
-}
+	if wireResult.Error != nil {
+		result.Error = &DNSError{
+			Message:    wireResult.Error.Message,
+			Type:       wireResult.Error.Type,
+			IsTimeout:  wireResult.Error.IsTimeout,
+			IsNotFound: wireResult.Error.IsNotFound,
+		}
+		return result, nil
+	}
 
-func (w *wasmResolver) LookupMX(ctx context.Context, host string, nameserver string) ([]string, error) {
-	r := &regletnet.WasmResolver{Nameserver: nameserver}
-	return r.LookupMX(ctx, host)
-}
+	result.Records = wireResult.Records
+	if wireResult.MXRecords != nil {
+		for _, mx := range wireResult.MXRecords {
+			result.MXRecords = append(result.MXRecords, MXRecord{
+				Host: mx.Host,
+				Pref: mx.Pref,
+			})
+		}
+	}
 
-func (w *wasmResolver) LookupTXT(ctx context.Context, host string, nameserver string) ([]string, error) {
-	r := &regletnet.WasmResolver{Nameserver: nameserver}
-	return r.LookupTXT(ctx, host)
-}
-
-func (w *wasmResolver) LookupNS(ctx context.Context, host string, nameserver string) ([]string, error) {
-	r := &regletnet.WasmResolver{Nameserver: nameserver}
-	return r.LookupNS(ctx, host)
+	return result, nil
 }
 
 func init() {
 	slog.Info("DNS plugin init() started")
-	// Inject the real WASM-compatible resolver
-	regletsdk.Register(&dnsPlugin{})
+	regletsdk.Register(&dnsPlugin{
+		LookupFunc: wrapLookup,
+	})
 	slog.Info("DNS plugin init() registered")
 }
 

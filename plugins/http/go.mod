@@ -1,4 +1,4 @@
-module github.com/reglet-dev/reglet/plugins/http
+module github.com/reglet-dev/reglet-plugins/plugins/http
 
 go 1.25.5
 

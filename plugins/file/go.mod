@@ -1,4 +1,4 @@
-module github.com/reglet-dev/reglet/plugins/file
+module github.com/reglet-dev/reglet-plugins/plugins/file
 
 go 1.25.5
 
