@@ -1,25 +1,20 @@
-.PHONY: all build clean test help
+.PHONY: build clean test
 
-PLUGIN_NAME = command
-WASM_FILE = $(PLUGIN_NAME).wasm
-
-all: build ## Default target: build
+PLUGIN_NAME=command.wasm
 
 build: ## Build plugin to WASM
-	@echo "Building $(PLUGIN_NAME) plugin to WASM..."
-	GOOS=wasip1 GOARCH=wasm go build -buildmode=c-shared -o $(WASM_FILE) .
-	@echo "Built: $(WASM_FILE)"
-	@ls -lh $(WASM_FILE)
+	@echo "Building command plugin to WASM..."
+	GOOS=wasip1 GOARCH=wasm go build -buildmode=c-shared -o $(PLUGIN_NAME) .
+	@echo "Built: $(PLUGIN_NAME)"
+	@ls -lh $(PLUGIN_NAME)
 
 clean: ## Remove build artifacts
 	@echo "Cleaning..."
-	rm -f $(WASM_FILE)
+	rm -f $(PLUGIN_NAME)
 
-test: ## Run plugin tests
+test: ## Run plugin tests (Go tests, not WASM)
 	@echo "Running tests..."
 	go test -v ./...
 
 help: ## Display this help message
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
-
-.DEFAULT_GOAL := help
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%%-20s\033[0m %%s\n", $$1, $$2}'

@@ -2,155 +2,50 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"time"
 
-	regletsdk "github.com/reglet-dev/reglet-sdk/go"
+	"github.com/reglet-dev/reglet-sdk/application/plugin"
+	"github.com/reglet-dev/reglet-sdk/domain/entities"
+	"github.com/reglet-dev/reglet-sdk/infrastructure/wasm"
+	"github.com/reglet-dev/reglet/plugins/tcp/core"
+
+	// Import services to trigger auto-registration
+	_ "github.com/reglet-dev/reglet/plugins/tcp/services"
 )
 
-// TCPConnectResult represents the result of a TCP connection attempt.
-// This is a local type that mirrors the SDK type for testability.
-type TCPConnectResult struct {
-	Connected       bool
-	Address         string
-	ResponseTimeMs  int64
-	RemoteAddr      string
-	LocalAddr       string
-	TLS             bool
-	TLSVersion      string
-	TLSCipherSuite  string
-	TLSServerName   string
-	TLSCertSubject  string
-	TLSCertIssuer   string
-	TLSCertNotAfter *time.Time
+type tcpPlugin struct{}
+
+func (p *tcpPlugin) Manifest(ctx context.Context) (*entities.Manifest, error) {
+	return core.Plugin.Manifest(), nil
 }
 
-// tcpPlugin implements the sdk.Plugin interface.
-type tcpPlugin struct {
-	// DialTCP allows dependency injection for testing
-	DialTCP func(ctx context.Context, host, port string, timeoutMs int, useTLS bool) (*TCPConnectResult, error)
+func (p *tcpPlugin) Check(ctx context.Context, configBytes []byte) (*entities.Result, error) {
+	// Parse config
+	var cfgStruct core.TCPConfig
+	if err := json.Unmarshal(configBytes, &cfgStruct); err != nil {
+		return nil, fmt.Errorf("failed to parse config: %w", err)
+	}
+	cfg := &cfgStruct
+
+	// Determine operation
+	handler, ok := core.Plugin.GetHandler("tcp", "connect")
+	if !ok {
+		return entities.ResultErrorPtr("configuration", "Unknown operation"), nil
+	}
+
+	// Create client with default adapter
+	req := &plugin.Request{
+		Client: wasm.NewTCPAdapter(),
+		Config: cfg,
+		Raw:    configBytes,
+	}
+
+	return handler(ctx, req)
 }
 
-// Describe returns plugin metadata.
-func (p *tcpPlugin) Describe(ctx context.Context) (regletsdk.Metadata, error) {
-	return regletsdk.Metadata{
-		Name:        "tcp",
-		Version:     "1.0.0",
-		Description: "TCP connection testing and TLS validation",
-		Capabilities: []regletsdk.Capability{
-			{
-				Kind:    "network",
-				Pattern: "outbound:*",
-			},
-		},
-	}, nil
+func init() {
+	plugin.Register(&tcpPlugin{})
 }
 
-type TCPConfig struct {
-	Host               string `json:"host" validate:"required" description:"Target host (hostname or IP)"`
-	Port               string `json:"port" validate:"required" description:"Target port"`
-	TimeoutMs          int    `json:"timeout_ms" default:"5000" description:"Connection timeout in milliseconds"`
-	TLS                bool   `json:"tls,omitempty" description:"Use TLS/SSL connection"`
-	ExpectedTLSVersion string `json:"expected_tls_version,omitempty" description:"Expected minimum TLS version (e.g., 'TLS 1.2')"`
-}
-
-// Schema returns the JSON schema for the plugin's configuration.
-func (p *tcpPlugin) Schema(ctx context.Context) ([]byte, error) {
-	return regletsdk.GenerateSchema(TCPConfig{})
-}
-
-// Check executes the TCP observation.
-func (p *tcpPlugin) Check(ctx context.Context, config regletsdk.Config) (regletsdk.Evidence, error) {
-	// Set defaults
-	if _, ok := config["timeout_ms"]; !ok {
-		config["timeout_ms"] = 5000
-	}
-
-	var cfg TCPConfig
-	if err := regletsdk.ValidateConfig(config, &cfg); err != nil {
-		return regletsdk.Evidence{
-			Status: false,
-			Error: regletsdk.ToErrorDetail(
-				&regletsdk.ConfigError{
-					Err: err,
-				},
-			),
-		}, nil
-	}
-
-	address := fmt.Sprintf("%s:%s", cfg.Host, cfg.Port)
-
-	if p.DialTCP == nil {
-		return regletsdk.Failure("internal", "DialTCP not initialized"), nil
-	}
-
-	result, err := p.DialTCP(ctx, cfg.Host, cfg.Port, cfg.TimeoutMs, cfg.TLS)
-	if err != nil {
-		return regletsdk.Evidence{
-			Status: false,
-			Error: regletsdk.ToErrorDetail(
-				&regletsdk.NetworkError{
-					Operation: "tcp_connect",
-					Target:    address,
-					Err:       err,
-				},
-			),
-		}, nil
-	}
-
-	// Prepare evidence data from result
-	data := map[string]interface{}{
-		"connected":        result.Connected,
-		"address":          result.Address,
-		"response_time_ms": result.ResponseTimeMs,
-		"remote_addr":      result.RemoteAddr,
-		"local_addr":       result.LocalAddr,
-	}
-
-	if result.TLS {
-		data["tls"] = true
-		data["tls_version"] = result.TLSVersion
-		data["tls_cipher_suite"] = result.TLSCipherSuite
-		data["tls_server_name"] = result.TLSServerName
-		if result.TLSCertSubject != "" {
-			data["tls_cert_subject"] = result.TLSCertSubject
-			data["tls_cert_issuer"] = result.TLSCertIssuer
-		}
-		if result.TLSCertNotAfter != nil {
-			data["tls_cert_not_after"] = result.TLSCertNotAfter.Format(time.RFC3339)
-			// Calculate days remaining
-			days := int(time.Until(*result.TLSCertNotAfter).Hours() / 24)
-			data["tls_cert_days_remaining"] = days
-		}
-	}
-
-	// Check TLS version expectation
-	if cfg.ExpectedTLSVersion != "" {
-		if !isTLSVersionAtLeast(result.TLSVersion, cfg.ExpectedTLSVersion) {
-			data["expectation_failed"] = true
-			data["expectation_error"] = fmt.Sprintf("expected TLS version >= %s, got %s", cfg.ExpectedTLSVersion, result.TLSVersion)
-			return regletsdk.Success(data), nil
-		}
-	}
-
-	return regletsdk.Success(data), nil
-}
-
-// isTLSVersionAtLeast checks if actual TLS version meets the minimum requirement
-func isTLSVersionAtLeast(actual, minimum string) bool {
-	versions := map[string]int{
-		"TLS 1.0": 10,
-		"TLS 1.1": 11,
-		"TLS 1.2": 12,
-		"TLS 1.3": 13,
-	}
-
-	actualVal, okActual := versions[actual]
-	minimumVal, okMinimum := versions[minimum]
-
-	if !okActual || !okMinimum {
-		return false
-	}
-
-	return actualVal >= minimumVal
-}
+func main() {}
