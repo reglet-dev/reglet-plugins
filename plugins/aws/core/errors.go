@@ -4,7 +4,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/reglet-dev/reglet-sdk/domain/entities"
+	"github.com/reglet-dev/reglet-plugin-sdk/domain/entities"
 )
 
 // MapAWSErrorToSDK converts AWS errors to SDK error types.

@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/reglet-dev/reglet-sdk/application/plugin"
+	"github.com/reglet-dev/reglet-plugin-sdk/application/plugin"
 	"github.com/reglet-dev/reglet/plugins/aws/core"
 )
 

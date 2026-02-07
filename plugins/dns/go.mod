@@ -3,7 +3,7 @@ module github.com/reglet-dev/reglet/plugins/dns
 go 1.25.5
 
 require (
-	github.com/reglet-dev/reglet-sdk v0.5.0
+	github.com/reglet-dev/reglet-plugin-sdk v0.5.0
 	github.com/stretchr/testify v1.11.1
 )
 

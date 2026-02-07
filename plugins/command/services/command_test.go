@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/reglet-dev/reglet-sdk/application/plugin"
-	"github.com/reglet-dev/reglet-sdk/domain/ports"
+	"github.com/reglet-dev/reglet-plugin-sdk/application/plugin"
+	"github.com/reglet-dev/reglet-plugin-sdk/domain/ports"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
