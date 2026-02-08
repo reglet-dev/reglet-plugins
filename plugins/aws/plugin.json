@@ -1,0 +1,5 @@
+{
+  "name": "aws",
+  "description": "AWS infrastructure inspection and compliance",
+  "capabilities": ["network"]
+}

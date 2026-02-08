@@ -1,0 +1,5 @@
+{
+  "name": "smtp",
+  "description": "SMTP connection testing and server validation",
+  "capabilities": ["network"]
+}

@@ -1,0 +1,90 @@
+name: Publish Plugin
+
+on:
+  push:
+    tags:
+      - '*/v*'
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Parse tag
+        id: parse
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          PLUGIN="${TAG%%/*}"
+          VERSION="${TAG#*/v}"
+          echo "plugin=${PLUGIN}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Publishing ${PLUGIN} v${VERSION}"
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate plugin directory
+        run: |
+          if [ ! -d "plugins/${{ steps.parse.outputs.plugin }}" ]; then
+            echo "::error::Plugin directory plugins/${{ steps.parse.outputs.plugin }} does not exist"
+            exit 1
+          fi
+
+      - name: Read plugin metadata
+        id: meta
+        run: |
+          PLUGIN="${{ steps.parse.outputs.plugin }}"
+          DESCRIPTION=$(jq -r '.description' "plugins/${PLUGIN}/plugin.json")
+          CAPABILITIES=$(jq -r '.capabilities | join(",")' "plugins/${PLUGIN}/plugin.json")
+          SDK_VERSION=$(grep 'reglet-plugin-sdk' "plugins/${PLUGIN}/go.mod" | awk '{print $2}')
+          echo "description=${DESCRIPTION}" >> "$GITHUB_OUTPUT"
+          echo "capabilities=${CAPABILITIES}" >> "$GITHUB_OUTPUT"
+          echo "sdk_version=${SDK_VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Build WASM
+        working-directory: plugins/${{ steps.parse.outputs.plugin }}
+        run: GOOS=wasip1 GOARCH=wasm go build -buildmode=c-shared -o plugin.wasm .
+
+      - name: Generate metadata.json
+        run: |
+          PLUGIN="${{ steps.parse.outputs.plugin }}"
+          VERSION="${{ steps.parse.outputs.version }}"
+          jq --arg v "${VERSION}" '. + {version: $v}' "plugins/${PLUGIN}/plugin.json" > metadata.json
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install ORAS
+        uses: oras-project/setup-oras@v1
+
+      - name: Push to GHCR
+        run: |
+          PLUGIN="${{ steps.parse.outputs.plugin }}"
+          VERSION="${{ steps.parse.outputs.version }}"
+          DESCRIPTION="${{ steps.meta.outputs.description }}"
+          CAPABILITIES="${{ steps.meta.outputs.capabilities }}"
+          SDK_VERSION="${{ steps.meta.outputs.sdk_version }}"
+
+          oras push "ghcr.io/reglet-dev/plugins/${PLUGIN}:${VERSION}" \
+            --config metadata.json:application/vnd.reglet.plugin.config.v1+json \
+            "plugins/${PLUGIN}/plugin.wasm:application/vnd.reglet.plugin.wasm.v1" \
+            --annotation "org.opencontainers.image.title=${PLUGIN}" \
+            --annotation "org.opencontainers.image.version=${VERSION}" \
+            --annotation "org.opencontainers.image.source=https://github.com/reglet-dev/reglet-plugins" \
+            --annotation "org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --annotation "org.opencontainers.image.licenses=Apache-2.0" \
+            --annotation "org.opencontainers.image.description=${DESCRIPTION}" \
+            --annotation "dev.reglet.plugin.capabilities=${CAPABILITIES}" \
+            --annotation "dev.reglet.plugin.sdk-version=${SDK_VERSION}"

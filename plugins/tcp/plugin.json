@@ -1,0 +1,5 @@
+{
+  "name": "tcp",
+  "description": "TCP connection testing and TLS validation",
+  "capabilities": ["network"]
+}

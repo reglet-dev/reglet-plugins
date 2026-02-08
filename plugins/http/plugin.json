@@ -1,0 +1,5 @@
+{
+  "name": "http",
+  "description": "HTTP/HTTPS request checking and validation",
+  "capabilities": ["network"]
+}
