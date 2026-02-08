@@ -105,9 +105,10 @@ func TestTCPService_Connect_Fail(t *testing.T) {
 	ctx = plugin.WithClient(ctx, ports.TCPDialer(mockDialer))
 
 	output, err := svc.ConnectHandler(ctx, input)
-	require.Error(t, err)
-	assert.Nil(t, output)
-	assert.Contains(t, err.Error(), "connection failed")
+	require.NoError(t, err)
+	require.NotNil(t, output)
+	assert.False(t, output.Connected)
+	assert.Contains(t, output.Error, "connection failed")
 }
 
 func TestTCPService_Connect_TLS_Version(t *testing.T) {

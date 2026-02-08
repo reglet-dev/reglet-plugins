@@ -29,9 +29,10 @@ func init() {
 				RecordType: "A",
 			},
 			ExpectedOutput: &ResolveOutput{
-				Hostname:   "example.com",
-				RecordType: "A",
-				Records:    []string{"93.184.216.34"},
+				Hostname:    "example.com",
+				RecordType:  "A",
+				Records:     []string{"93.184.216.34"},
+				RecordCount: 1,
 			},
 		},
 		plugin.Example[ResolveInput, ResolveOutput]{
