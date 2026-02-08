@@ -4,14 +4,15 @@ Official plugin repository for [Reglet](https://github.com/reglet-dev/reglet), t
 
 ## Plugins
 
-| Plugin | Version | Description |
-|--------|---------|-------------|
-| [command](plugins/command) | 1.0.0 | Execute commands and validate output |
-| [dns](plugins/dns) | 1.0.0 | DNS resolution and record validation |
-| [file](plugins/file) | 1.1.0 | File existence, content, and hash checks |
-| [http](plugins/http) | 1.0.0 | HTTP/HTTPS request checking and validation |
-| [smtp](plugins/smtp) | 1.0.0 | SMTP connection testing and server validation |
-| [tcp](plugins/tcp) | 1.0.0 | TCP connection testing and TLS validation |
+| Plugin | Description |
+|--------|-------------|
+| [aws](plugins/aws) | AWS infrastructure inspection and compliance |
+| [command](plugins/command) | Execute commands and validate output |
+| [dns](plugins/dns) | DNS resolution and record validation |
+| [file](plugins/file) | File system checks and validation |
+| [http](plugins/http) | HTTP/HTTPS request checking and validation |
+| [smtp](plugins/smtp) | SMTP connection testing and server validation |
+| [tcp](plugins/tcp) | TCP connection testing and TLS validation |
 
 ## Quick Start
 
@@ -46,7 +47,9 @@ Each plugin is an independent Go module that compiles to WASM. See [Plugin Devel
 
 ```
 reglet-plugins/
+├── .github/workflows/ # CI/CD (publish-plugin.yml)
 ├── plugins/
+│   ├── aws/         # AWS infrastructure plugin
 │   ├── command/     # Command execution plugin
 │   ├── dns/         # DNS resolution plugin
 │   ├── file/        # File system plugin
@@ -64,11 +67,13 @@ Each plugin follows this structure:
 
 ```
 plugin-name/
+├── core/            # Plugin definition and config types
+│   ├── plugin.go    # PluginDef (name, capabilities, etc.)
+│   └── config.go    # Config struct with jsonschema tags
+├── services/        # Operation handlers
+├── plugin.go        # WASM entry point
+├── plugin.json      # Static metadata for CI (name, description, capabilities)
 ├── go.mod           # Go module definition
-├── go.sum           # Dependencies
-├── main.go          # WASM entry point (build tag: wasip1)
-├── plugin.go        # Plugin implementation
-├── plugin_test.go   # Tests (build tag: !wasip1)
 ├── Makefile         # Build targets
 └── README.md        # Plugin documentation
 ```
@@ -79,6 +84,7 @@ Plugins declare capabilities they require. The Reglet host grants or denies thes
 
 | Plugin | Capability | Pattern |
 |--------|-----------|---------|
+| aws | network | `outbound:*.amazonaws.com:443` |
 | command | exec | `**` |
 | dns | network | `outbound:53` |
 | file | fs | `read:**` |
@@ -86,12 +92,23 @@ Plugins declare capabilities they require. The Reglet host grants or denies thes
 | smtp | network | `outbound:25,465,587` |
 | tcp | network | `outbound:*` |
 
+## Publishing
+
+Plugins are published as OCI artifacts to `ghcr.io/reglet-dev/plugins/<name>:<version>`. Push a tag to trigger the CI workflow:
+
+```bash
+git tag command/v1.2.0
+git push origin command/v1.2.0
+```
+
+This builds the WASM binary and pushes it via ORAS with the correct media types for the Reglet host to pull.
+
 ## SDK
 
-All plugins use the [Reglet SDK](https://github.com/reglet-dev/reglet-sdk):
+All plugins use the [Reglet Plugin SDK](https://github.com/reglet-dev/reglet-plugin-sdk):
 
 ```go
-import regletsdk "github.com/reglet-dev/reglet-sdk/go"
+import "github.com/reglet-dev/reglet-plugin-sdk"
 ```
 
 ## License
