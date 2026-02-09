@@ -8,7 +8,6 @@ type ExecuteInput struct {
 	Command string   `json:"command,omitempty" jsonschema:"description=Command to execute directly"`
 	Args    []string `json:"args,omitempty" jsonschema:"description=Command arguments"`
 	// Options
-	// Options
 	Dir            string   `json:"dir,omitempty" jsonschema:"description=Working directory"`
 	Env            []string `json:"env,omitempty" jsonschema:"description=Environment variables (KEY=VAL)"`
 	TimeoutSeconds int      `json:"timeout_seconds,omitempty" jsonschema:"default=60,description=Execution timeout"`
