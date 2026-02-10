@@ -1,7 +1,7 @@
 {
   "repository": "https://github.com/reglet-dev/reglet-plugins",
   "registry": "ghcr.io/reglet-dev/plugins",
-  "updated": "2026-02-10T00:26:31Z",
+  "updated": "2026-02-10T01:19:06Z",
   "plugins": [
     {
       "name": "aws",
@@ -41,7 +41,7 @@
       "capabilities": [
         "network"
       ],
-      "latest": "1.0.1"
+      "latest": "1.0.2"
     },
     {
       "name": "smtp",
@@ -49,7 +49,7 @@
       "capabilities": [
         "network"
       ],
-      "latest": "1.0.1"
+      "latest": "1.0.2"
     },
     {
       "name": "tcp",
