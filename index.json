@@ -1,0 +1,63 @@
+{
+  "repository": "https://github.com/reglet-dev/reglet-plugins",
+  "registry": "ghcr.io/reglet-dev/plugins",
+  "updated": "2026-02-10T00:26:31Z",
+  "plugins": [
+    {
+      "name": "aws",
+      "description": "AWS infrastructure inspection and compliance",
+      "capabilities": [
+        "network"
+      ],
+      "latest": "1.0.2"
+    },
+    {
+      "name": "command",
+      "description": "Execute commands and validate output",
+      "capabilities": [
+        "exec"
+      ],
+      "latest": "1.0.1"
+    },
+    {
+      "name": "dns",
+      "description": "DNS resolution and record validation",
+      "capabilities": [
+        "network"
+      ],
+      "latest": "1.0.1"
+    },
+    {
+      "name": "file",
+      "description": "File system checks and validation",
+      "capabilities": [
+        "fs"
+      ],
+      "latest": "1.0.1"
+    },
+    {
+      "name": "http",
+      "description": "HTTP/HTTPS request checking and validation",
+      "capabilities": [
+        "network"
+      ],
+      "latest": "1.0.1"
+    },
+    {
+      "name": "smtp",
+      "description": "SMTP connection testing and server validation",
+      "capabilities": [
+        "network"
+      ],
+      "latest": "1.0.1"
+    },
+    {
+      "name": "tcp",
+      "description": "TCP connection testing and TLS validation",
+      "capabilities": [
+        "network"
+      ],
+      "latest": "1.0.1"
+    }
+  ]
+}
